@@ -14,27 +14,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Invalid email format.";
     } else {
-        // Check if email already exists
-        $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $stmt->store_result();
-        
-        if ($stmt->num_rows > 0) {
-            $error = "Email already exists.";
-        } else {
-            // Insert new user
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
-            $stmt->bind_param("sss", $name, $email, $hashed_password);
+        try {
+            // Check if email already exists
+            $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+            $stmt->execute([$email]);
             
-            if ($stmt->execute()) {
-                $success = "Registration successful! <a href='index.php'>Login here</a>";
+            if ($stmt->rowCount() > 0) {
+                $error = "Email already exists.";
             } else {
-                $error = "Something went wrong. Please try again.";
+                // Insert new user
+                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $conn->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
+                
+                if ($stmt->execute([$name, $email, $hashed_password])) {
+                    $success = "Registration successful! <a href='index.php'>Login here</a>";
+                } else {
+                    $error = "Something went wrong. Please try again.";
+                }
             }
+        } catch (PDOException $e) {
+            $error = "Database error: " . $e->getMessage();
         }
-        $stmt->close();
     }
 }
 ?>
